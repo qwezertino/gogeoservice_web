@@ -1,11 +1,9 @@
 import { DatePicker } from './DatePicker'
 import { ZoneInfo } from './ZoneInfo'
 import { NdviLegend } from './NdviLegend'
-import { SnapshotList } from './SnapshotList'
 import { Slider } from '../ui/Slider'
 import { Spinner } from '../ui/Spinner'
 import type { DrawnZone } from '../../hooks/useDrawnZone'
-import type { Snapshot } from '../../types'
 
 interface SidebarProps {
   zone: DrawnZone | null
@@ -16,20 +14,14 @@ interface SidebarProps {
   loading: boolean
   opacity: number
   onOpacityChange: (v: number) => void
-  snapshots: Snapshot[]
-  activeSnapshotId: number | null
-  onSelectSnapshot: (id: number) => void
-  onDeleteSnapshot: (id: number) => void
-  onClearAllSnapshots: () => void
+  hasActiveSnapshot: boolean
 }
 
 export function Sidebar({
   zone, date, onDateChange, onRequest, onResetZone,
-  loading, opacity, onOpacityChange,
-  snapshots, activeSnapshotId, onSelectSnapshot, onDeleteSnapshot, onClearAllSnapshots,
+  loading, opacity, onOpacityChange, hasActiveSnapshot,
 }: SidebarProps) {
   const canRequest = !loading && zone !== null && zone.validation.valid && date !== ''
-  const hasActiveSnapshot = activeSnapshotId !== null
 
   return (
     <aside className="w-80 bg-gray-800 flex flex-col h-full overflow-y-auto shadow-xl">
@@ -41,7 +33,7 @@ export function Sidebar({
 
       <div className="flex-1 flex flex-col gap-5 px-5 py-5">
         {/* Hint */}
-        {!zone && snapshots.length === 0 && (
+        {!zone && (
           <div className="bg-blue-900/40 border border-blue-700/50 rounded-lg px-3 py-2.5 text-xs text-blue-200">
             Нарисуйте полигон на карте (минимум 3 точки), выберите дату и нажмите «Получить NDVI».
           </div>
@@ -84,18 +76,6 @@ export function Sidebar({
             Сбросить геозону
           </button>
         )}
-
-        {/* Divider before history */}
-        {snapshots.length > 0 && <div className="border-t border-gray-700" />}
-
-        {/* Snapshot history */}
-        <SnapshotList
-          snapshots={snapshots}
-          activeId={activeSnapshotId}
-          onSelect={onSelectSnapshot}
-          onDelete={onDeleteSnapshot}
-          onClearAll={onClearAllSnapshots}
-        />
 
         {/* NDVI Legend */}
         <NdviLegend />

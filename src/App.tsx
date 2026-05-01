@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { MapView } from './components/Map/MapView'
 import { Sidebar } from './components/Sidebar/Sidebar'
+import { SnapshotPanel } from './components/Sidebar/SnapshotPanel'
 import { Toast, useToast } from './components/ui/Toast'
 import { useDrawnZone } from './hooks/useDrawnZone'
 import { useNdviRequest } from './hooks/useNdviRequest'
@@ -95,11 +96,7 @@ export function App() {
         loading={ndviState.status === 'loading'}
         opacity={opacity}
         onOpacityChange={setOpacity}
-        snapshots={snapshots}
-        activeSnapshotId={activeId}
-        onSelectSnapshot={handleSelectSnapshot}
-        onDeleteSnapshot={removeSnapshot}
-        onClearAllSnapshots={clearAllSnapshots}
+        hasActiveSnapshot={activeId !== null}
       />
       <MapView
         zone={zone}
@@ -109,6 +106,13 @@ export function App() {
         ndviOpacity={opacity}
         loading={ndviState.status === 'loading'}
         flyToTarget={flyToTarget}
+      />
+      <SnapshotPanel
+        snapshots={snapshots}
+        activeId={activeId}
+        onSelect={handleSelectSnapshot}
+        onDelete={removeSnapshot}
+        onClearAll={clearAllSnapshots}
       />
       <Toast messages={messages} onRemove={removeToast} />
     </div>
