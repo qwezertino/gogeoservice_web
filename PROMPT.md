@@ -5,6 +5,71 @@
 
 ---
 
+## Деплой: Docker
+Приложение полностью контейнеризировано.
+
+### Dockerfile (multi-stage)
+- **Stage 1 `builder`**: `node:22-alpine` — `npm ci` + `npm run build` → артефакт `dist/`
+- **Stage 2 `runtime`**: `nginx:alpine` — копирует `dist/` и кастомный `nginx.conf`
+
+### nginx.conf (внутри контейнера)
+- Раздаёт статику из `/usr/share/nginx/html`
+- SPA fallback: все неизвестные пути → `index.html`
+- Проксирует `/api/` → `http://gogeoapp:8080/api/` (имя сервиса из docker-compose)
+
+### docker-compose.yml
+Файл добавляется в **корень gogeoservice_web** и описывает только фронтенд-сервис.
+Подключается к уже существующей внешней docker-сети проекта `geogoservice`
+(сеть объявляется как `external: true`), чтобы иметь доступ к сервису `gogeoapp`.
+
+```
+services:
+  gogeoservice_web:
+    build: .
+    ports:
+      - "${HOST_PORT_WEB:-3000}:80"
+    networks:
+      - geogoservice_net
+
+networks:
+  geogoservice_net:
+    external: true
+```
+
+### .env.example
+```
+HOST_PORT_WEB=3000
+```
+
+### Структура Docker-файлов
+```
+gogeoservice_web/
+├── Dockerfile
+├── docker-compose.yml
+├── .env.example
+├── nginx.conf
+└── Makefile
+```
+
+### Makefile
+Все команды для работы с проектом:
+```
+make dev        # npm run dev (локальный дев-сервер Vite)
+make install    # npm ci
+make build      # npm run build (сборка dist/)
+make up         # docker compose up -d --build
+make down       # docker compose down
+make logs       # docker compose logs -f
+make rebuild    # down + up (пересборка образа)
+make lint       # npm run lint
+make preview    # npm run preview (локальный предпросмотр prod-сборки)
+```
+
+> Для разработки без Docker: `npm run dev` — Vite проксирует `/api` → `http://localhost:80`
+> через `vite.config.ts` (переменная `VITE_API_URL` не нужна в dev-режиме).
+
+---
+
 ## Стек
 - Фреймворк: React 18 + TypeScript + Vite
 - Карта: Leaflet + react-leaflet

@@ -1,0 +1,12 @@
+services:
+  gogeoservice_web:
+    build: .
+    ports:
+      - "${HOST_PORT_WEB:-3000}:80"
+    networks:
+      - geogoservice_net
+    restart: unless-stopped
+
+networks:
+  geogoservice_net:
+    external: true
