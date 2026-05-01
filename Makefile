@@ -4,6 +4,7 @@ dev:
 	bun run dev
 
 install:
+	@[ -f .env ] || cp .env.example .env
 	bun install
 
 build:

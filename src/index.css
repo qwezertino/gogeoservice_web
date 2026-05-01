@@ -9,6 +9,13 @@ html, body, #root {
   font-family: system-ui, sans-serif;
 }
 
+/* Fix: geoman polygon/rectangle/polyline icons use SVG internal <defs> references
+   (url(#id)) that break when bundled as CSS data URIs with escaped quotes.
+   Override with self-contained percent-encoded SVGs. */
+.leaflet-pm-toolbar .leaflet-pm-icon-polygon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpolygon points='19,7.5 19,16.5 7.5,22 4,14 4,9 12.5,4' fill='none' stroke='%235B5B5B' stroke-width='2'/%3E%3Ccircle cx='19' cy='7.5' r='2' fill='%235B5B5B'/%3E%3Ccircle cx='19' cy='16.5' r='2' fill='%235B5B5B'/%3E%3Ccircle cx='7.5' cy='22' r='2' fill='%235B5B5B'/%3E%3Ccircle cx='4' cy='14' r='2' fill='%235B5B5B'/%3E%3Ccircle cx='4' cy='9' r='2' fill='%235B5B5B'/%3E%3Ccircle cx='12.5' cy='4' r='2' fill='%235B5B5B'/%3E%3C/svg%3E");
+}
+
 @keyframes fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }
