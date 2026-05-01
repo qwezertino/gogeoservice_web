@@ -7,6 +7,7 @@ import { useDrawnZone } from './hooks/useDrawnZone'
 import { useNdviRequest } from './hooks/useNdviRequest'
 import { useSnapshots } from './hooks/useSnapshots'
 import { maskImageToPolygon } from './utils/maskPolygon'
+import { DEFAULT_WINDOW, DEFAULT_CLOUD } from './config'
 import type { FlyToTarget } from './components/Map/FlyToController'
 import type { LatLng } from 'leaflet'
 
@@ -27,6 +28,8 @@ export function App() {
   } = useSnapshots()
   const [date, setDate] = useState(getDefaultDate)
   const [opacity, setOpacity] = useState(0.85)
+  const [searchWindow, setSearchWindow] = useState(DEFAULT_WINDOW)
+  const [searchCloud, setSearchCloud] = useState(DEFAULT_CLOUD)
   const [flyToTarget, setFlyToTarget] = useState<FlyToTarget | null>(null)
 
   // Когда NDVI-запрос успешен → маскируем → сохраняем снимок
@@ -71,8 +74,8 @@ export function App() {
 
   const handleRequest = useCallback(() => {
     if (!zone || !zone.validation.valid) return
-    requestNdvi(zone.bbox, date)
-  }, [zone, date, requestNdvi])
+    requestNdvi(zone.bbox, date, searchWindow, searchCloud)
+  }, [zone, date, searchWindow, searchCloud, requestNdvi])
 
   const handleResetZone = useCallback(() => {
     clearZone()
@@ -91,6 +94,10 @@ export function App() {
         zone={zone}
         date={date}
         onDateChange={setDate}
+        window={searchWindow}
+        onWindowChange={setSearchWindow}
+        cloud={searchCloud}
+        onCloudChange={setSearchCloud}
         onRequest={handleRequest}
         onResetZone={handleResetZone}
         loading={ndviState.status === 'loading'}

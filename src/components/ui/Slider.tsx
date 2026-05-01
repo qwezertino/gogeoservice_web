@@ -5,15 +5,17 @@ interface SliderProps {
   max?: number
   step?: number
   label?: string
+  format?: (v: number) => string
 }
 
-export function Slider({ value, onChange, min = 0, max = 1, step = 0.05, label }: SliderProps) {
+export function Slider({ value, onChange, min = 0, max = 1, step = 0.05, label, format }: SliderProps) {
+  const display = format ? format(value) : `${Math.round(value * 100)}%`
   return (
     <div className="flex flex-col gap-1">
       {label && (
         <div className="flex justify-between text-xs text-gray-400">
           <span>{label}</span>
-          <span>{Math.round(value * 100)}%</span>
+          <span>{display}</span>
         </div>
       )}
       <input

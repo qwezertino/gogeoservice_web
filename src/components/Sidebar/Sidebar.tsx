@@ -9,6 +9,10 @@ interface SidebarProps {
   zone: DrawnZone | null
   date: string
   onDateChange: (d: string) => void
+  window: number
+  onWindowChange: (v: number) => void
+  cloud: number
+  onCloudChange: (v: number) => void
   onRequest: () => void
   onResetZone: () => void
   loading: boolean
@@ -18,7 +22,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({
-  zone, date, onDateChange, onRequest, onResetZone,
+  zone, date, onDateChange,
+  window, onWindowChange, cloud, onCloudChange,
+  onRequest, onResetZone,
   loading, opacity, onOpacityChange, hasActiveSnapshot,
 }: SidebarProps) {
   const canRequest = !loading && zone !== null && zone.validation.valid && date !== ''
@@ -44,6 +50,28 @@ export function Sidebar({
 
         {/* Date picker */}
         <DatePicker value={date} onChange={onDateChange} />
+
+        {/* Search params */}
+        <div className="flex flex-col gap-3 bg-gray-700/30 rounded-lg px-3 py-3">
+          <Slider
+            value={window}
+            onChange={onWindowChange}
+            min={1}
+            max={30}
+            step={1}
+            label="Окно поиска"
+            format={v => `±${Math.round(v)} дн.`}
+          />
+          <Slider
+            value={cloud}
+            onChange={onCloudChange}
+            min={1}
+            max={100}
+            step={1}
+            label="Макс. облачность"
+            format={v => `${Math.round(v)}%`}
+          />
+        </div>
 
         {/* Request button */}
         <button
@@ -82,7 +110,7 @@ export function Sidebar({
       </div>
 
       <div className="px-5 py-3 border-t border-gray-700 text-[11px] text-gray-600 text-center">
-        Данные: Sentinel-2 L2A · Облачность &lt; 20%
+        Данные: Sentinel-2 L2A · Облачность &lt; {cloud}%
       </div>
     </aside>
   )

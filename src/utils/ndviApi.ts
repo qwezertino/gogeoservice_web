@@ -1,4 +1,5 @@
 import type { BBox3857 } from '../types'
+import { DEFAULT_WINDOW, DEFAULT_CLOUD } from '../config'
 
 const MAX_DIM = 512
 
@@ -20,11 +21,13 @@ function calcOutputSize(bbox: BBox3857): { w: number; h: number } {
 
 export async function fetchNdvi(
   bbox: BBox3857,
-  date: string
+  date: string,
+  window: number = DEFAULT_WINDOW,
+  cloud: number = DEFAULT_CLOUD,
 ): Promise<{ blob: Blob; provider: string | null }> {
   const { w, h } = calcOutputSize(bbox)
   const bboxStr = `${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY}`
-  const url = `/api/render?bbox=${bboxStr}&date=${date}&w=${w}&h=${h}`
+  const url = `/api/render?bbox=${bboxStr}&date=${date}&w=${w}&h=${h}&window=${window}&cloud=${cloud}`
 
   const res = await fetch(url)
   const provider = res.headers.get('X-STAC-Provider')
