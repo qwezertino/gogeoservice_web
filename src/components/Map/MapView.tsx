@@ -6,14 +6,14 @@ import { FlyToController } from './FlyToController'
 import type { FlyToTarget } from './FlyToController'
 import { Spinner } from '../ui/Spinner'
 import type { DrawnZone } from '../../hooks/useDrawnZone'
-import type { BBox3857 } from '../../types'
+import type { Snapshot } from '../../types'
 import type { LatLng } from 'leaflet'
 
 interface MapViewProps {
   zone: DrawnZone | null
   onZoneChange: (points: LatLng[]) => void
-  ndviImageUrl: string | null
-  ndviBbox: BBox3857 | null
+  snapshots: Snapshot[]
+  activeSnapshotId: number | null
   ndviOpacity: number
   loading: boolean
   flyToTarget: FlyToTarget | null
@@ -25,7 +25,7 @@ const OSM_ATTR = '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> c
 const ESRI_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 const ESRI_ATTR = 'Tiles &copy; Esri'
 
-export function MapView({ zone, onZoneChange, ndviImageUrl, ndviBbox, ndviOpacity, loading, flyToTarget }: MapViewProps) {
+export function MapView({ zone, onZoneChange, snapshots, activeSnapshotId, ndviOpacity, loading, flyToTarget }: MapViewProps) {
   return (
     <div className="relative flex-1 h-full">
       <MapContainer
@@ -47,9 +47,14 @@ export function MapView({ zone, onZoneChange, ndviImageUrl, ndviBbox, ndviOpacit
 
         <FlyToController target={flyToTarget} />
 
-        {ndviImageUrl && ndviBbox && (
-          <NdviOverlay imageUrl={ndviImageUrl} bbox={ndviBbox} opacity={ndviOpacity} />
-        )}
+        {snapshots.map(snap => (
+          <NdviOverlay
+            key={snap.id}
+            imageUrl={snap.maskedImageUrl}
+            bbox={snap.bbox}
+            opacity={snap.id === activeSnapshotId ? ndviOpacity : ndviOpacity * 0.45}
+          />
+        ))}
       </MapContainer>
 
       {loading && (

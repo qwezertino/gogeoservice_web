@@ -20,7 +20,7 @@ export function App() {
   const { state: ndviState, request: requestNdvi, reset: resetNdvi } = useNdviRequest()
   const { messages, show: showToast, remove: removeToast } = useToast()
   const {
-    snapshots, activeSnapshot, activeId,
+    snapshots, activeId,
     add: addSnapshot, remove: removeSnapshot,
     select: selectSnapshot, clearAll: clearAllSnapshots,
   } = useSnapshots()
@@ -104,8 +104,8 @@ export function App() {
       <MapView
         zone={zone}
         onZoneChange={handleZoneChange}
-        ndviImageUrl={activeSnapshot?.maskedImageUrl ?? null}
-        ndviBbox={activeSnapshot?.bbox ?? null}
+        snapshots={snapshots}
+        activeSnapshotId={activeId}
         ndviOpacity={opacity}
         loading={ndviState.status === 'loading'}
         flyToTarget={flyToTarget}
