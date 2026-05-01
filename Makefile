@@ -1,13 +1,13 @@
 .PHONY: dev install build up down logs rebuild lint preview
 
 dev:
-	npm run dev
+	bun run dev
 
 install:
-	npm ci
+	bun install
 
 build:
-	npm run build
+	bun run build
 
 up:
 	docker compose up -d --build
@@ -25,7 +25,7 @@ rebuild:
 	docker compose down && docker compose up -d --build
 
 lint:
-	npm run lint
+	bun run lint
 
 preview:
-	npm run preview
+	bun run preview
