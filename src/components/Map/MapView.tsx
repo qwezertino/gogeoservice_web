@@ -14,6 +14,7 @@ interface MapViewProps {
   onZoneChange: (points: LatLng[]) => void
   snapshots: Snapshot[]
   activeSnapshotId: number | null
+  onSelectSnapshot: (id: number) => void
   ndviOpacity: number
   loading: boolean
   flyToTarget: FlyToTarget | null
@@ -25,7 +26,7 @@ const OSM_ATTR = '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> c
 const ESRI_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 const ESRI_ATTR = 'Tiles &copy; Esri'
 
-export function MapView({ zone, onZoneChange, snapshots, activeSnapshotId, ndviOpacity, loading, flyToTarget }: MapViewProps) {
+export function MapView({ zone, onZoneChange, snapshots, activeSnapshotId, onSelectSnapshot, ndviOpacity, loading, flyToTarget }: MapViewProps) {
   return (
     <div className="relative flex-1 h-full">
       <MapContainer
@@ -53,6 +54,8 @@ export function MapView({ zone, onZoneChange, snapshots, activeSnapshotId, ndviO
             imageUrl={snap.maskedImageUrl}
             bbox={snap.bbox}
             opacity={snap.id === activeSnapshotId ? ndviOpacity : ndviOpacity * 0.45}
+            isActive={snap.id === activeSnapshotId}
+            onClick={() => onSelectSnapshot(snap.id)}
           />
         ))}
       </MapContainer>

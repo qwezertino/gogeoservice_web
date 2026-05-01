@@ -103,6 +103,7 @@ export function App() {
         onZoneChange={handleZoneChange}
         snapshots={snapshots}
         activeSnapshotId={activeId}
+        onSelectSnapshot={handleSelectSnapshot}
         ndviOpacity={opacity}
         loading={ndviState.status === 'loading'}
         flyToTarget={flyToTarget}
