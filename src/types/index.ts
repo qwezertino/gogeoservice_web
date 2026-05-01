@@ -37,3 +37,11 @@ export interface ToastMessage {
   type: 'success' | 'error' | 'info'
   text: string
 }
+
+export interface Snapshot {
+  id: number
+  label: string          // "Снимок #N · YYYY-MM-DD"
+  maskedImageUrl: string // blob URL
+  bbox: BBox3857
+  date: string
+}

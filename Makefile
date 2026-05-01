@@ -18,6 +18,9 @@ down:
 logs:
 	docker compose logs -f
 
+ps:
+	docker compose ps
+
 rebuild:
 	docker compose down && docker compose up -d --build
 

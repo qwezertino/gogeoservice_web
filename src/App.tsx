@@ -1,10 +1,12 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { MapView } from './components/Map/MapView'
 import { Sidebar } from './components/Sidebar/Sidebar'
 import { Toast, useToast } from './components/ui/Toast'
 import { useDrawnZone } from './hooks/useDrawnZone'
 import { useNdviRequest } from './hooks/useNdviRequest'
+import { useSnapshots } from './hooks/useSnapshots'
 import { maskImageToPolygon } from './utils/maskPolygon'
+import type { FlyToTarget } from './components/Map/FlyToController'
 import type { LatLng } from 'leaflet'
 
 function getDefaultDate(): string {
@@ -17,61 +19,70 @@ export function App() {
   const { zone, setPoints, clear: clearZone } = useDrawnZone()
   const { state: ndviState, request: requestNdvi, reset: resetNdvi } = useNdviRequest()
   const { messages, show: showToast, remove: removeToast } = useToast()
+  const {
+    snapshots, activeSnapshot, activeId,
+    add: addSnapshot, remove: removeSnapshot,
+    select: selectSnapshot, clearAll: clearAllSnapshots,
+  } = useSnapshots()
   const [date, setDate] = useState(getDefaultDate)
   const [opacity, setOpacity] = useState(0.85)
-  const [lastStatus, setLastStatus] = useState<string>('idle')
-  const [maskedImageUrl, setMaskedImageUrl] = useState<string | null>(null)
-  const maskedUrlRef = useRef<string | null>(null)
+  const [flyToTarget, setFlyToTarget] = useState<FlyToTarget | null>(null)
 
-  // Применяем маску полигона когда пришёл снимок
+  // Когда NDVI-запрос успешен → маскируем → сохраняем снимок
   useEffect(() => {
     if (ndviState.status !== 'success' || !zone) return
 
-    maskImageToPolygon(ndviState.imageUrl, zone.bbox, zone.points)
+    const { imageUrl, provider } = ndviState
+    const { bbox, points } = zone
+    const currentDate = date
+    let cancelled = false
+
+    maskImageToPolygon(imageUrl, bbox, points)
       .then(url => {
-        if (maskedUrlRef.current) URL.revokeObjectURL(maskedUrlRef.current)
-        maskedUrlRef.current = url
-        setMaskedImageUrl(url)
+        if (cancelled) { URL.revokeObjectURL(url); return }
+        addSnapshot({ maskedImageUrl: url, bbox, date: currentDate })
+        const src = provider ? ` (источник: ${provider})` : ''
+        showToast(`Снимок получен ✓${src}`, 'success')
+        resetNdvi()
       })
       .catch(() => {
-        // Fallback: показываем прямоугольный снимок
-        setMaskedImageUrl(ndviState.imageUrl)
+        if (!cancelled) {
+          addSnapshot({ maskedImageUrl: imageUrl, bbox, date: currentDate })
+          showToast('Снимок получен ✓', 'success')
+          resetNdvi()
+        }
       })
-  }, [ndviState, zone])
 
-  if (ndviState.status !== lastStatus) {
-    setLastStatus(ndviState.status)
-    if (ndviState.status === 'success') {
-      const provider = ndviState.provider ? ` (источник: ${ndviState.provider})` : ''
-      showToast(`Снимок получен ✓${provider}`, 'success')
-    } else if (ndviState.status === 'error') {
-      showToast(ndviState.message, 'error')
-    }
-  }
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ndviState.status === 'success' ? ndviState.imageUrl : null])
+
+  // Ошибки
+  useEffect(() => {
+    if (ndviState.status === 'error') showToast(ndviState.message, 'error')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ndviState.status === 'error' ? ndviState.message : null])
 
   const handleZoneChange = useCallback((points: LatLng[]) => {
     setPoints(points)
     resetNdvi()
-    setMaskedImageUrl(null)
   }, [setPoints, resetNdvi])
 
   const handleRequest = useCallback(() => {
     if (!zone || !zone.validation.valid) return
-    setMaskedImageUrl(null)
     requestNdvi(zone.bbox, date)
   }, [zone, date, requestNdvi])
 
-  const handleReset = useCallback(() => {
+  const handleResetZone = useCallback(() => {
     clearZone()
     resetNdvi()
-    if (maskedUrlRef.current) {
-      URL.revokeObjectURL(maskedUrlRef.current)
-      maskedUrlRef.current = null
-    }
-    setMaskedImageUrl(null)
   }, [clearZone, resetNdvi])
 
-  const ndviBbox = ndviState.status === 'success' && zone ? zone.bbox : null
+  const handleSelectSnapshot = useCallback((id: number) => {
+    selectSnapshot(id)
+    const snap = snapshots.find(s => s.id === id)
+    if (snap) setFlyToTarget({ bbox: snap.bbox, seq: Date.now() })
+  }, [snapshots, selectSnapshot])
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-900">
@@ -80,19 +91,24 @@ export function App() {
         date={date}
         onDateChange={setDate}
         onRequest={handleRequest}
-        onReset={handleReset}
+        onResetZone={handleResetZone}
         loading={ndviState.status === 'loading'}
-        hasResult={ndviState.status === 'success'}
         opacity={opacity}
         onOpacityChange={setOpacity}
+        snapshots={snapshots}
+        activeSnapshotId={activeId}
+        onSelectSnapshot={handleSelectSnapshot}
+        onDeleteSnapshot={removeSnapshot}
+        onClearAllSnapshots={clearAllSnapshots}
       />
       <MapView
         zone={zone}
         onZoneChange={handleZoneChange}
-        ndviImageUrl={maskedImageUrl}
-        ndviBbox={ndviBbox}
+        ndviImageUrl={activeSnapshot?.maskedImageUrl ?? null}
+        ndviBbox={activeSnapshot?.bbox ?? null}
         ndviOpacity={opacity}
         loading={ndviState.status === 'loading'}
+        flyToTarget={flyToTarget}
       />
       <Toast messages={messages} onRemove={removeToast} />
     </div>

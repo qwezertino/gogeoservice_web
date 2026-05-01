@@ -2,6 +2,8 @@ import { MapContainer, TileLayer, LayersControl } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { DrawControl } from './DrawControl'
 import { NdviOverlay } from './NdviOverlay'
+import { FlyToController } from './FlyToController'
+import type { FlyToTarget } from './FlyToController'
 import { Spinner } from '../ui/Spinner'
 import type { DrawnZone } from '../../hooks/useDrawnZone'
 import type { BBox3857 } from '../../types'
@@ -14,6 +16,7 @@ interface MapViewProps {
   ndviBbox: BBox3857 | null
   ndviOpacity: number
   loading: boolean
+  flyToTarget: FlyToTarget | null
 }
 
 const OSM_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
@@ -22,7 +25,7 @@ const OSM_ATTR = '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> c
 const ESRI_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 const ESRI_ATTR = 'Tiles &copy; Esri'
 
-export function MapView({ zone, onZoneChange, ndviImageUrl, ndviBbox, ndviOpacity, loading }: MapViewProps) {
+export function MapView({ zone, onZoneChange, ndviImageUrl, ndviBbox, ndviOpacity, loading, flyToTarget }: MapViewProps) {
   return (
     <div className="relative flex-1 h-full">
       <MapContainer
@@ -41,6 +44,8 @@ export function MapView({ zone, onZoneChange, ndviImageUrl, ndviBbox, ndviOpacit
         </LayersControl>
 
         <DrawControl zone={zone} onZoneChange={onZoneChange} />
+
+        <FlyToController target={flyToTarget} />
 
         {ndviImageUrl && ndviBbox && (
           <NdviOverlay imageUrl={ndviImageUrl} bbox={ndviBbox} opacity={ndviOpacity} />

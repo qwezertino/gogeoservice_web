@@ -1,27 +1,35 @@
 import { DatePicker } from './DatePicker'
 import { ZoneInfo } from './ZoneInfo'
 import { NdviLegend } from './NdviLegend'
+import { SnapshotList } from './SnapshotList'
 import { Slider } from '../ui/Slider'
 import { Spinner } from '../ui/Spinner'
 import type { DrawnZone } from '../../hooks/useDrawnZone'
+import type { Snapshot } from '../../types'
 
 interface SidebarProps {
   zone: DrawnZone | null
   date: string
   onDateChange: (d: string) => void
   onRequest: () => void
-  onReset: () => void
+  onResetZone: () => void
   loading: boolean
-  hasResult: boolean
   opacity: number
   onOpacityChange: (v: number) => void
+  snapshots: Snapshot[]
+  activeSnapshotId: number | null
+  onSelectSnapshot: (id: number) => void
+  onDeleteSnapshot: (id: number) => void
+  onClearAllSnapshots: () => void
 }
 
 export function Sidebar({
-  zone, date, onDateChange, onRequest, onReset,
-  loading, hasResult, opacity, onOpacityChange,
+  zone, date, onDateChange, onRequest, onResetZone,
+  loading, opacity, onOpacityChange,
+  snapshots, activeSnapshotId, onSelectSnapshot, onDeleteSnapshot, onClearAllSnapshots,
 }: SidebarProps) {
   const canRequest = !loading && zone !== null && zone.validation.valid && date !== ''
+  const hasActiveSnapshot = activeSnapshotId !== null
 
   return (
     <aside className="w-80 bg-gray-800 flex flex-col h-full overflow-y-auto shadow-xl">
@@ -33,9 +41,11 @@ export function Sidebar({
 
       <div className="flex-1 flex flex-col gap-5 px-5 py-5">
         {/* Hint */}
-        <div className="bg-blue-900/40 border border-blue-700/50 rounded-lg px-3 py-2.5 text-xs text-blue-200">
-          Нарисуйте полигон на карте (минимум 3 точки), выберите дату и нажмите «Получить NDVI».
-        </div>
+        {!zone && snapshots.length === 0 && (
+          <div className="bg-blue-900/40 border border-blue-700/50 rounded-lg px-3 py-2.5 text-xs text-blue-200">
+            Нарисуйте полигон на карте (минимум 3 точки), выберите дату и нажмите «Получить NDVI».
+          </div>
+        )}
 
         {/* Zone info */}
         {zone && <ZoneInfo zone={zone} />}
@@ -43,7 +53,7 @@ export function Sidebar({
         {/* Date picker */}
         <DatePicker value={date} onChange={onDateChange} />
 
-        {/* Button */}
+        {/* Request button */}
         <button
           onClick={onRequest}
           disabled={!canRequest}
@@ -55,8 +65,8 @@ export function Sidebar({
           {loading ? <><Spinner size="sm" /><span>Загрузка…</span></> : 'Получить NDVI'}
         </button>
 
-        {/* Opacity slider — показываем только если есть результат */}
-        {hasResult && (
+        {/* Opacity slider */}
+        {hasActiveSnapshot && (
           <Slider
             value={opacity}
             onChange={onOpacityChange}
@@ -64,18 +74,30 @@ export function Sidebar({
           />
         )}
 
-        {/* Reset */}
-        {(zone || hasResult) && (
+        {/* Reset drawn zone */}
+        {zone && (
           <button
-            onClick={onReset}
+            onClick={onResetZone}
             disabled={loading}
             className="w-full py-2 rounded-lg text-sm text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 transition-colors disabled:opacity-40"
           >
-            Сбросить
+            Сбросить геозону
           </button>
         )}
 
-        {/* Legend */}
+        {/* Divider before history */}
+        {snapshots.length > 0 && <div className="border-t border-gray-700" />}
+
+        {/* Snapshot history */}
+        <SnapshotList
+          snapshots={snapshots}
+          activeId={activeSnapshotId}
+          onSelect={onSelectSnapshot}
+          onDelete={onDeleteSnapshot}
+          onClearAll={onClearAllSnapshots}
+        />
+
+        {/* NDVI Legend */}
         <NdviLegend />
       </div>
 
