@@ -12,10 +12,16 @@ export function useNdviRequest() {
   const [state, setState] = useState<NdviState>({ status: 'idle' })
   const prevUrl = useRef<string | null>(null)
 
-  const request = useCallback(async (bbox: BBox3857, date: string, window: number, cloud: number) => {
+  const request = useCallback(async (
+    bbox: BBox3857,
+    date: string,
+    window: number,
+    cloud: number,
+    polygon?: { lng: number; lat: number }[],
+  ) => {
     setState({ status: 'loading' })
     try {
-      const { blob, provider } = await fetchNdvi(bbox, date, window, cloud)
+      const { blob, provider } = await fetchNdvi(bbox, date, window, cloud, polygon)
       if (prevUrl.current) URL.revokeObjectURL(prevUrl.current)
       const imageUrl = URL.createObjectURL(blob)
       prevUrl.current = imageUrl

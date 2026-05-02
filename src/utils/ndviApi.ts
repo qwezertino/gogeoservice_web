@@ -24,10 +24,14 @@ export async function fetchNdvi(
   date: string,
   window: number = DEFAULT_WINDOW,
   cloud: number = DEFAULT_CLOUD,
+  polygon?: { lng: number; lat: number }[],
 ): Promise<{ blob: Blob; provider: string | null }> {
   const { w, h } = calcOutputSize(bbox)
   const bboxStr = `${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY}`
-  const url = `/api/render?bbox=${bboxStr}&date=${date}&w=${w}&h=${h}&window=${window}&cloud=${cloud}`
+  let url = `/api/render?bbox=${bboxStr}&date=${date}&w=${w}&h=${h}&window=${window}&cloud=${cloud}`
+  if (polygon && polygon.length >= 3) {
+    url += `&polygon=${polygon.map(p => `${p.lng},${p.lat}`).join(',')}`
+  }
 
   const res = await fetch(url)
   const provider = res.headers.get('X-STAC-Provider')

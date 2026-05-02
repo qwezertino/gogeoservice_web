@@ -6,13 +6,29 @@ export function useSnapshots() {
   const [activeId, setActiveId] = useState<number | null>(null)
   const counterRef = useRef(0)
 
-  const add = useCallback((data: { maskedImageUrl: string; bbox: BBox3857; date: string; minioKey?: string }) => {
+  const add = useCallback((data: { maskedImageUrl: string; bbox: BBox3857; date: string; minioKey?: string; source?: 'catalog' }) => {
     const id = ++counterRef.current
     const label = `Снимок #${id} · ${data.date}`
     const snapshot: Snapshot = { id, label, ...data }
     setSnapshots(prev => [...prev, snapshot])
     setActiveId(id)
     return id
+  }, [])
+
+  // Удаляет все снимки из каталога (перед загрузкой нового)
+  const removeCatalog = useCallback(() => {
+    setSnapshots(prev => {
+      const keep: Snapshot[] = []
+      for (const s of prev) {
+        if (s.source === 'catalog') URL.revokeObjectURL(s.maskedImageUrl)
+        else keep.push(s)
+      }
+      return keep
+    })
+    setActiveId(prev => {
+      // если активный — каталожный, сбрасываем (snapshots ещё не обновлён, поэтому просто null)
+      return null
+    })
   }, [])
 
   const remove = useCallback((id: number) => {
@@ -38,5 +54,5 @@ export function useSnapshots() {
 
   const activeSnapshot = snapshots.find(s => s.id === activeId) ?? null
 
-  return { snapshots, activeSnapshot, activeId, add, remove, select, clearAll }
+  return { snapshots, activeSnapshot, activeId, add, remove, removeCatalog, select, clearAll }
 }

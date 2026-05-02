@@ -7,7 +7,6 @@ import { useDrawnZone } from './hooks/useDrawnZone'
 import { useNdviRequest } from './hooks/useNdviRequest'
 import { useSnapshots } from './hooks/useSnapshots'
 import { useCatalog } from './hooks/useCatalog'
-import { maskImageToPolygon } from './utils/maskPolygon'
 import { deleteTile } from './utils/catalogApi'
 import { DEFAULT_WINDOW, DEFAULT_CLOUD } from './config'
 import type { FlyToTarget } from './components/Map/FlyToController'
@@ -26,7 +25,7 @@ export function App() {
   const { messages, show: showToast, remove: removeToast } = useToast()
   const {
     snapshots, activeId,
-    add: addSnapshot, remove: removeSnapshot,
+    add: addSnapshot, remove: removeSnapshot, removeCatalog,
     select: selectSnapshot, clearAll: clearAllSnapshots,
   } = useSnapshots()
   const [date, setDate] = useState(getDefaultDate)
@@ -37,32 +36,18 @@ export function App() {
   const [mapBbox, setMapBbox] = useState<BBox4326 | null>(null)
   const { state: catalogState, load: loadCatalog } = useCatalog()
 
-  // Когда NDVI-запрос успешен → маскируем → сохраняем снимок
+  // Когда NDVI-запрос успешен → сохраняем снимок (сервер уже замаскировал по полигону)
   useEffect(() => {
     if (ndviState.status !== 'success' || !zone) return
 
     const { imageUrl, provider } = ndviState
-    const { bbox, points } = zone
+    const { bbox } = zone
     const currentDate = date
-    let cancelled = false
 
-    maskImageToPolygon(imageUrl, bbox, points)
-      .then(url => {
-        if (cancelled) { URL.revokeObjectURL(url); return }
-        addSnapshot({ maskedImageUrl: url, bbox, date: currentDate })
-        const src = provider ? ` (источник: ${provider})` : ''
-        showToast(`Снимок получен ✓${src}`, 'success')
-        resetNdvi()
-      })
-      .catch(() => {
-        if (!cancelled) {
-          addSnapshot({ maskedImageUrl: imageUrl, bbox, date: currentDate })
-          showToast('Снимок получен ✓', 'success')
-          resetNdvi()
-        }
-      })
-
-    return () => { cancelled = true }
+    addSnapshot({ maskedImageUrl: imageUrl, bbox, date: currentDate })
+    const src = provider ? ` (источник: ${provider})` : ''
+    showToast(`Снимок получен ✓${src}`, 'success')
+    resetNdvi()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ndviState.status === 'success' ? ndviState.imageUrl : null])
 
@@ -79,7 +64,7 @@ export function App() {
 
   const handleRequest = useCallback(() => {
     if (!zone || !zone.validation.valid) return
-    requestNdvi(zone.bbox, date, searchWindow, searchCloud)
+    requestNdvi(zone.bbox, date, searchWindow, searchCloud, zone.points)
   }, [zone, date, searchWindow, searchCloud, requestNdvi])
 
   const handleResetZone = useCallback(() => {
@@ -107,12 +92,13 @@ export function App() {
 
   const handleLoadCatalog = useCallback(async (year: number) => {
     if (!mapBbox) return
+    removeCatalog()
     const count = await loadCatalog(year, mapBbox, ({ bbox, date: tileDate, blobUrl, minioKey }) => {
-      addSnapshot({ maskedImageUrl: blobUrl, bbox, date: tileDate, minioKey })
+      addSnapshot({ maskedImageUrl: blobUrl, bbox, date: tileDate, minioKey, source: 'catalog' })
     })
     if (count === 0) showToast(`Снимков за ${year} в этой области не найдено`, 'info')
     else showToast(`Загружено ${count} снимков за ${year}`, 'success')
-  }, [mapBbox, loadCatalog, addSnapshot, showToast])
+  }, [mapBbox, loadCatalog, addSnapshot, removeCatalog, showToast])
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-900">
