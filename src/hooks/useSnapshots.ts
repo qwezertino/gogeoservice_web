@@ -25,10 +25,7 @@ export function useSnapshots() {
       }
       return keep
     })
-    setActiveId(prev => {
-      // если активный — каталожный, сбрасываем (snapshots ещё не обновлён, поэтому просто null)
-      return null
-    })
+    setActiveId(() => null)
   }, [])
 
   const remove = useCallback((id: number) => {
