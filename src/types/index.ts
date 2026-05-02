@@ -44,4 +44,17 @@ export interface Snapshot {
   maskedImageUrl: string // blob URL
   bbox: BBox3857
   date: string
+  minioKey?: string      // присутствует только для тайлов из каталога БД
+}
+
+/** Запись из /api/catalog (координаты bbox в EPSG:3857) */
+export interface TileRecord {
+  bbox_minx: number
+  bbox_miny: number
+  bbox_maxx: number
+  bbox_maxy: number
+  date_acquired: string  // YYYY-MM-DD
+  width: number
+  height: number
+  minio_key: string
 }

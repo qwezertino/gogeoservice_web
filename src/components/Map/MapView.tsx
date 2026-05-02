@@ -3,10 +3,11 @@ import 'leaflet/dist/leaflet.css'
 import { DrawControl } from './DrawControl'
 import { NdviOverlay } from './NdviOverlay'
 import { FlyToController } from './FlyToController'
+import { MapBoundsCapture } from './MapBoundsCapture'
 import type { FlyToTarget } from './FlyToController'
 import { Spinner } from '../ui/Spinner'
 import type { DrawnZone } from '../../hooks/useDrawnZone'
-import type { Snapshot } from '../../types'
+import type { BBox4326, Snapshot } from '../../types'
 import type { LatLng } from 'leaflet'
 
 interface MapViewProps {
@@ -18,6 +19,7 @@ interface MapViewProps {
   ndviOpacity: number
   loading: boolean
   flyToTarget: FlyToTarget | null
+  onBoundsChange: (bbox: BBox4326) => void
 }
 
 const OSM_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
@@ -26,7 +28,7 @@ const OSM_ATTR = '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> c
 const ESRI_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 const ESRI_ATTR = 'Tiles &copy; Esri'
 
-export function MapView({ zone, onZoneChange, snapshots, activeSnapshotId, onSelectSnapshot, ndviOpacity, loading, flyToTarget }: MapViewProps) {
+export function MapView({ zone, onZoneChange, snapshots, activeSnapshotId, onSelectSnapshot, ndviOpacity, loading, flyToTarget, onBoundsChange }: MapViewProps) {
   return (
     <div className="relative flex-1 h-full">
       <MapContainer
@@ -47,6 +49,8 @@ export function MapView({ zone, onZoneChange, snapshots, activeSnapshotId, onSel
         <DrawControl zone={zone} onZoneChange={onZoneChange} />
 
         <FlyToController target={flyToTarget} />
+
+        <MapBoundsCapture onBoundsChange={onBoundsChange} />
 
         {snapshots.map(snap => (
           <NdviOverlay

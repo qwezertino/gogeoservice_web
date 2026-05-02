@@ -6,7 +6,7 @@ export function useSnapshots() {
   const [activeId, setActiveId] = useState<number | null>(null)
   const counterRef = useRef(0)
 
-  const add = useCallback((data: { maskedImageUrl: string; bbox: BBox3857; date: string }) => {
+  const add = useCallback((data: { maskedImageUrl: string; bbox: BBox3857; date: string; minioKey?: string }) => {
     const id = ++counterRef.current
     const label = `Снимок #${id} · ${data.date}`
     const snapshot: Snapshot = { id, label, ...data }

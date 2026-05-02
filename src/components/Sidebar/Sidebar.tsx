@@ -1,6 +1,7 @@
 import { DatePicker } from './DatePicker'
 import { ZoneInfo } from './ZoneInfo'
 import { NdviLegend } from './NdviLegend'
+import { CatalogBrowse } from './CatalogBrowse'
 import { Slider } from '../ui/Slider'
 import { Spinner } from '../ui/Spinner'
 import type { DrawnZone } from '../../hooks/useDrawnZone'
@@ -19,6 +20,10 @@ interface SidebarProps {
   opacity: number
   onOpacityChange: (v: number) => void
   hasActiveSnapshot: boolean
+  onLoadCatalog: (year: number) => void
+  catalogLoading: boolean
+  catalogProgress: number
+  catalogTotal: number
 }
 
 export function Sidebar({
@@ -26,6 +31,7 @@ export function Sidebar({
   window, onWindowChange, cloud, onCloudChange,
   onRequest, onResetZone,
   loading, opacity, onOpacityChange, hasActiveSnapshot,
+  onLoadCatalog, catalogLoading, catalogProgress, catalogTotal,
 }: SidebarProps) {
   const canRequest = !loading && zone !== null && zone.validation.valid && date !== ''
 
@@ -107,6 +113,14 @@ export function Sidebar({
 
         {/* NDVI Legend */}
         <NdviLegend />
+
+        {/* Catalog browse by year */}
+        <CatalogBrowse
+          onLoad={onLoadCatalog}
+          loading={catalogLoading}
+          progress={catalogProgress}
+          total={catalogTotal}
+        />
       </div>
 
       <div className="px-5 py-3 border-t border-gray-700 text-[11px] text-gray-600 text-center">

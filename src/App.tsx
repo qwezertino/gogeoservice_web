@@ -6,9 +6,12 @@ import { Toast, useToast } from './components/ui/Toast'
 import { useDrawnZone } from './hooks/useDrawnZone'
 import { useNdviRequest } from './hooks/useNdviRequest'
 import { useSnapshots } from './hooks/useSnapshots'
+import { useCatalog } from './hooks/useCatalog'
 import { maskImageToPolygon } from './utils/maskPolygon'
+import { deleteTile } from './utils/catalogApi'
 import { DEFAULT_WINDOW, DEFAULT_CLOUD } from './config'
 import type { FlyToTarget } from './components/Map/FlyToController'
+import type { BBox4326 } from './types'
 import type { LatLng } from 'leaflet'
 
 function getDefaultDate(): string {
@@ -31,6 +34,8 @@ export function App() {
   const [searchWindow, setSearchWindow] = useState(DEFAULT_WINDOW)
   const [searchCloud, setSearchCloud] = useState(DEFAULT_CLOUD)
   const [flyToTarget, setFlyToTarget] = useState<FlyToTarget | null>(null)
+  const [mapBbox, setMapBbox] = useState<BBox4326 | null>(null)
+  const { state: catalogState, load: loadCatalog } = useCatalog()
 
   // Когда NDVI-запрос успешен → маскируем → сохраняем снимок
   useEffect(() => {
@@ -88,6 +93,27 @@ export function App() {
     if (snap) setFlyToTarget({ bbox: snap.bbox, seq: Date.now() })
   }, [snapshots, selectSnapshot])
 
+  const handleDeleteSnapshot = useCallback(async (id: number) => {
+    const snap = snapshots.find(s => s.id === id)
+    removeSnapshot(id)
+    if (snap?.minioKey) {
+      try {
+        await deleteTile(snap.minioKey)
+      } catch {
+        showToast('Не удалось удалить снимок из базы', 'error')
+      }
+    }
+  }, [snapshots, removeSnapshot, showToast])
+
+  const handleLoadCatalog = useCallback(async (year: number) => {
+    if (!mapBbox) return
+    const count = await loadCatalog(year, mapBbox, ({ bbox, date: tileDate, blobUrl, minioKey }) => {
+      addSnapshot({ maskedImageUrl: blobUrl, bbox, date: tileDate, minioKey })
+    })
+    if (count === 0) showToast(`Снимков за ${year} в этой области не найдено`, 'info')
+    else showToast(`Загружено ${count} снимков за ${year}`, 'success')
+  }, [mapBbox, loadCatalog, addSnapshot, showToast])
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-900">
       <Sidebar
@@ -104,6 +130,10 @@ export function App() {
         opacity={opacity}
         onOpacityChange={setOpacity}
         hasActiveSnapshot={activeId !== null}
+        onLoadCatalog={handleLoadCatalog}
+        catalogLoading={catalogState.status === 'loading'}
+        catalogProgress={catalogState.status === 'loading' ? catalogState.progress : 0}
+        catalogTotal={catalogState.status === 'loading' ? catalogState.total : 0}
       />
       <MapView
         zone={zone}
@@ -114,12 +144,13 @@ export function App() {
         ndviOpacity={opacity}
         loading={ndviState.status === 'loading'}
         flyToTarget={flyToTarget}
+        onBoundsChange={setMapBbox}
       />
       <SnapshotPanel
         snapshots={snapshots}
         activeId={activeId}
         onSelect={handleSelectSnapshot}
-        onDelete={removeSnapshot}
+        onDelete={handleDeleteSnapshot}
         onClearAll={clearAllSnapshots}
       />
       <Toast messages={messages} onRemove={removeToast} />
