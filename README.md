@@ -1,73 +1,54 @@
-# React + TypeScript + Vite
+# gogeoservice_web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Веб-интерфейс для визуализации NDVI-снимков поверх карты. SPA на React + TypeScript + Vite, работает совместно с [geogoservice](../geogoservice) (Go API).
 
-Currently, two official plugins are available:
+## Стек
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **React 18 + TypeScript + Vite**
+- **Leaflet + react-leaflet v5** — карта
+- **@geoman-io/leaflet-geoman-free** — рисование полигона
+- **Tailwind CSS v4**
+- **Bun** — пакетный менеджер и dev-сервер
+- **Docker** — `oven/bun:1-alpine` (сборка) → `nginx:alpine` (раздача)
 
-## React Compiler
+## Возможности
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Рисование произвольного полигона на карте
+- Запрос NDVI-снимка через `/api/render` с серверной маскировкой по полигону
+- История снимков в сессии: просмотр, переключение, удаление
+- Все снимки отображаются на карте одновременно (активный — полная яркость, остальные — полупрозрачно)
+- Просмотр каталога снимков за год: метаданные загружаются один раз, PNG рендерятся по мере прокрутки карты
+- Удаление тайла из каталога (MinIO + БД)
+- Настройка окна поиска (дней) и максимальной облачности (%)
+- Выбор базового слоя карты: Esri Satellite / OpenStreetMap
 
-## Expanding the ESLint configuration
+## Быстрый старт
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cp .env.example .env   # при необходимости отредактируй .env
+make dev               # dev-сервер с HMR на :5173
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Docker
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+make up    # сборка и запуск контейнера
+make down  # остановка
+make logs  # логи nginx
 ```
+
+По умолчанию веб доступен на `http://localhost:7002`. Порт задаётся через `HOST_PORT_WEB` в `.env`.
+
+API (`geogoservice`) должен работать на порту `7001` на хосте.
+
+## Переменные окружения
+
+| Переменная | По умолчанию | Описание |
+|---|---|---|
+| `HOST_PORT_WEB` | `7002` | Порт на хосте для веб-интерфейса |
+| `VITE_DEFAULT_WINDOW` | `5` | Окно поиска снимков, ±дней |
+| `VITE_DEFAULT_CLOUD` | `20` | Максимальная облачность, % |
+| `VITE_DEFAULT_BASEMAP` | `esri` | Базовый слой карты: `esri` или `osm` |
+| `VITE_CATALOG_DEBOUNCE_MS` | `100` | Задержка рендера при движении карты, мс |
+| `VITE_CATALOG_MAX_TILES` | `200` | Максимум PNG-тайлов в памяти |
+| `VITE_CATALOG_REFRESH_MS` | `0` | Интервал обновления blob URL, мс (0 = выкл) |

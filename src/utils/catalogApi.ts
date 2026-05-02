@@ -1,10 +1,10 @@
 import type { BBox4326, BBox3857, TileRecord } from '../types'
 
 /** Запрашивает список закэшированных NDVI-тайлов за год в пределах bbox (WGS-84). */
-export async function fetchCatalog(year: number, bbox: BBox4326): Promise<TileRecord[]> {
+export async function fetchCatalog(year: number, bbox: BBox4326, signal?: AbortSignal): Promise<TileRecord[]> {
   const bboxStr = `${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}`
   const url = `/api/catalog?year=${year}&bbox=${bboxStr}`
-  const res = await fetch(url)
+  const res = await fetch(url, { signal })
   if (!res.ok) throw new Error(`catalog ${res.status}`)
   return res.json()
 }
@@ -26,18 +26,16 @@ const BATCH_SIZE = 100
 export async function renderCatalogTiles(
   tiles: TileRecord[],
   onProgress?: (done: number, total: number) => void,
+  signal?: AbortSignal,
 ): Promise<RenderedTile[]> {
   const results: RenderedTile[] = []
 
   for (let i = 0; i < tiles.length; i += BATCH_SIZE) {
+    if (signal?.aborted) break
     const chunk = tiles.slice(i, i + BATCH_SIZE)
 
     const batchBody = chunk.map(t => ({
-      bbox: [t.bbox_minx, t.bbox_miny, t.bbox_maxx, t.bbox_maxy],
-      date: t.date_acquired,
-      index: 'ndvi',
-      w: t.width,
-      h: t.height,
+      minio_key: t.minio_key,
     }))
 
     const res = await fetch('/api/render/batch', {

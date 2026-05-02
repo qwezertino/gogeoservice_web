@@ -6,7 +6,7 @@ import { Toast, useToast } from './components/ui/Toast'
 import { useDrawnZone } from './hooks/useDrawnZone'
 import { useNdviRequest } from './hooks/useNdviRequest'
 import { useSnapshots } from './hooks/useSnapshots'
-import { useCatalog } from './hooks/useCatalog'
+import { useViewportCatalog } from './hooks/useViewportCatalog'
 import { deleteTile } from './utils/catalogApi'
 import { DEFAULT_WINDOW, DEFAULT_CLOUD } from './config'
 import type { FlyToTarget } from './components/Map/FlyToController'
@@ -25,8 +25,8 @@ export function App() {
   const { messages, show: showToast, remove: removeToast } = useToast()
   const {
     snapshots, activeId,
-    add: addSnapshot, remove: removeSnapshot, removeCatalog,
-    select: selectSnapshot, clearAll: clearAllSnapshots,
+    add: addSnapshot, remove: removeSnapshot, removeMany: removeManySnapshots,
+    select: selectSnapshot, clearAll: clearAllSnapshots, updateBlobUrl: updateSnapshotBlobUrl,
   } = useSnapshots()
   const [date, setDate] = useState(getDefaultDate)
   const [opacity, setOpacity] = useState(0.85)
@@ -34,7 +34,25 @@ export function App() {
   const [searchCloud, setSearchCloud] = useState(DEFAULT_CLOUD)
   const [flyToTarget, setFlyToTarget] = useState<FlyToTarget | null>(null)
   const [mapBbox, setMapBbox] = useState<BBox4326 | null>(null)
-  const { state: catalogState, load: loadCatalog } = useCatalog()
+  const [catalogYear, setCatalogYear] = useState(new Date().getFullYear())
+
+  const handleBoundsChange = useCallback((bbox: BBox4326 | null, _zoom: number) => {
+    setMapBbox(bbox)
+  }, [])
+
+  const handleAddCatalogTile = useCallback(
+    (tile: { bbox: import('./types').BBox3857; date: string; blobUrl: string; minioKey: string }) =>
+      addSnapshot({ maskedImageUrl: tile.blobUrl, bbox: tile.bbox, date: tile.date, minioKey: tile.minioKey, source: 'catalog' }),
+    [addSnapshot],
+  )
+
+  const catalogState = useViewportCatalog(
+    catalogYear,
+    mapBbox,
+    handleAddCatalogTile,
+    removeManySnapshots,
+    updateSnapshotBlobUrl,
+  )
 
   // Когда NDVI-запрос успешен → сохраняем снимок (сервер уже замаскировал по полигону)
   useEffect(() => {
@@ -90,16 +108,6 @@ export function App() {
     }
   }, [snapshots, removeSnapshot, showToast])
 
-  const handleLoadCatalog = useCallback(async (year: number) => {
-    if (!mapBbox) return
-    removeCatalog()
-    const count = await loadCatalog(year, mapBbox, ({ bbox, date: tileDate, blobUrl, minioKey }) => {
-      addSnapshot({ maskedImageUrl: blobUrl, bbox, date: tileDate, minioKey, source: 'catalog' })
-    })
-    if (count === 0) showToast(`Снимков за ${year} в этой области не найдено`, 'info')
-    else showToast(`Загружено ${count} снимков за ${year}`, 'success')
-  }, [mapBbox, loadCatalog, addSnapshot, removeCatalog, showToast])
-
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-900">
       <Sidebar
@@ -116,10 +124,12 @@ export function App() {
         opacity={opacity}
         onOpacityChange={setOpacity}
         hasActiveSnapshot={activeId !== null}
-        onLoadCatalog={handleLoadCatalog}
-        catalogLoading={catalogState.status === 'loading'}
-        catalogProgress={catalogState.status === 'loading' ? catalogState.progress : 0}
-        catalogTotal={catalogState.status === 'loading' ? catalogState.total : 0}
+        catalogYear={catalogYear}
+        onCatalogYearChange={setCatalogYear}
+        catalogLoading={catalogState.loading}
+        catalogProgress={catalogState.progress}
+        catalogTotal={catalogState.total}
+        catalogZoomOk={mapBbox !== null}
       />
       <MapView
         zone={zone}
@@ -130,7 +140,7 @@ export function App() {
         ndviOpacity={opacity}
         loading={ndviState.status === 'loading'}
         flyToTarget={flyToTarget}
-        onBoundsChange={setMapBbox}
+        onBoundsChange={handleBoundsChange}
       />
       <SnapshotPanel
         snapshots={snapshots}

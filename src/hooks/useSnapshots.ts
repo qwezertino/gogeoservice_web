@@ -48,11 +48,32 @@ export function useSnapshots() {
     setActiveId(null)
   }, [])
 
+  const removeMany = useCallback((ids: number[]) => {
+    const idSet = new Set(ids)
+    setSnapshots(prev => {
+      const keep: Snapshot[] = []
+      for (const s of prev) {
+        if (idSet.has(s.id)) URL.revokeObjectURL(s.maskedImageUrl)
+        else keep.push(s)
+      }
+      return keep
+    })
+    setActiveId(prev => (prev !== null && idSet.has(prev) ? null : prev))
+  }, [])
+
   const select = useCallback((id: number) => {
     setActiveId(id)
   }, [])
 
+  const updateBlobUrl = useCallback((id: number, newUrl: string) => {
+    setSnapshots(prev => prev.map(s => {
+      if (s.id !== id) return s
+      URL.revokeObjectURL(s.maskedImageUrl)
+      return { ...s, maskedImageUrl: newUrl }
+    }))
+  }, [])
+
   const activeSnapshot = snapshots.find(s => s.id === activeId) ?? null
 
-  return { snapshots, activeSnapshot, activeId, add, remove, removeCatalog, select, clearAll }
+  return { snapshots, activeSnapshot, activeId, add, remove, removeMany, removeCatalog, select, updateBlobUrl, clearAll }
 }

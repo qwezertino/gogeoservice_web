@@ -1,4 +1,5 @@
 import { MapContainer, TileLayer, LayersControl } from 'react-leaflet'
+import { DEFAULT_BASEMAP } from '../../config'
 import 'leaflet/dist/leaflet.css'
 import { DrawControl } from './DrawControl'
 import { NdviOverlay } from './NdviOverlay'
@@ -19,7 +20,7 @@ interface MapViewProps {
   ndviOpacity: number
   loading: boolean
   flyToTarget: FlyToTarget | null
-  onBoundsChange: (bbox: BBox4326) => void
+  onBoundsChange: (bbox: BBox4326 | null, zoom: number) => void
 }
 
 const OSM_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
@@ -38,11 +39,11 @@ export function MapView({ zone, onZoneChange, snapshots, activeSnapshotId, onSel
         zoomControl={true}
       >
         <LayersControl position="topright">
-          <LayersControl.BaseLayer checked name="OpenStreetMap">
-            <TileLayer url={OSM_URL} attribution={OSM_ATTR} />
-          </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="Esri Satellite">
+          <LayersControl.BaseLayer checked={DEFAULT_BASEMAP === 'esri'} name="Esri Satellite">
             <TileLayer url={ESRI_URL} attribution={ESRI_ATTR} />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer checked={DEFAULT_BASEMAP === 'osm'} name="OpenStreetMap">
+            <TileLayer url={OSM_URL} attribution={OSM_ATTR} />
           </LayersControl.BaseLayer>
         </LayersControl>
 

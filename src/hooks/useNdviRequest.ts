@@ -22,7 +22,6 @@ export function useNdviRequest() {
     setState({ status: 'loading' })
     try {
       const { blob, provider } = await fetchNdvi(bbox, date, window, cloud, polygon)
-      if (prevUrl.current) URL.revokeObjectURL(prevUrl.current)
       const imageUrl = URL.createObjectURL(blob)
       prevUrl.current = imageUrl
       setState({ status: 'success', imageUrl, provider })
@@ -38,10 +37,7 @@ export function useNdviRequest() {
   }, [])
 
   const reset = useCallback(() => {
-    if (prevUrl.current) {
-      URL.revokeObjectURL(prevUrl.current)
-      prevUrl.current = null
-    }
+    prevUrl.current = null
     setState({ status: 'idle' })
   }, [])
 

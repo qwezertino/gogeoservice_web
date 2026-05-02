@@ -1,7 +1,7 @@
 import { DatePicker } from './DatePicker'
 import { ZoneInfo } from './ZoneInfo'
 import { NdviLegend } from './NdviLegend'
-import { CatalogBrowse } from './CatalogBrowse'
+import { CatalogYearSelector } from './CatalogYearSelector'
 import { Slider } from '../ui/Slider'
 import { Spinner } from '../ui/Spinner'
 import type { DrawnZone } from '../../hooks/useDrawnZone'
@@ -20,10 +20,12 @@ interface SidebarProps {
   opacity: number
   onOpacityChange: (v: number) => void
   hasActiveSnapshot: boolean
-  onLoadCatalog: (year: number) => void
+  catalogYear: number
+  onCatalogYearChange: (year: number) => void
   catalogLoading: boolean
   catalogProgress: number
   catalogTotal: number
+  catalogZoomOk: boolean
 }
 
 export function Sidebar({
@@ -31,7 +33,7 @@ export function Sidebar({
   window, onWindowChange, cloud, onCloudChange,
   onRequest, onResetZone,
   loading, opacity, onOpacityChange, hasActiveSnapshot,
-  onLoadCatalog, catalogLoading, catalogProgress, catalogTotal,
+  catalogYear, onCatalogYearChange, catalogLoading, catalogProgress, catalogTotal, catalogZoomOk,
 }: SidebarProps) {
   const canRequest = !loading && zone !== null && zone.validation.valid && date !== ''
 
@@ -114,12 +116,14 @@ export function Sidebar({
         {/* NDVI Legend */}
         <NdviLegend />
 
-        {/* Catalog browse by year */}
-        <CatalogBrowse
-          onLoad={onLoadCatalog}
+        {/* Catalog year selector — автозагрузка по viewport */}
+        <CatalogYearSelector
+          year={catalogYear}
+          onYearChange={onCatalogYearChange}
           loading={catalogLoading}
           progress={catalogProgress}
           total={catalogTotal}
+          zoomOk={catalogZoomOk}
         />
       </div>
 
