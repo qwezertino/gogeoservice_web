@@ -1,4 +1,4 @@
-import type { LatLng } from 'leaflet'
+import type { LngLat } from '../types'
 import type { BBox3857 } from '../types'
 import { lngLatToMeters } from './projection'
 
@@ -13,13 +13,13 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 
 /**
  * Обрезает прямоугольный PNG по форме полигона.
- * Точки полигона передаются в WGS84 (Leaflet LatLng).
+ * Точки полигона передаются в WGS84 (LngLat).
  * Возвращает новый blob URL с маскированным изображением.
  */
 export async function maskImageToPolygon(
   imageUrl: string,
   bbox: BBox3857,
-  points: LatLng[]
+  points: LngLat[]
 ): Promise<string> {
   const img = await loadImage(imageUrl)
   const w = img.naturalWidth

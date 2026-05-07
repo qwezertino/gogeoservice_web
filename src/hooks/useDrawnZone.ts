@@ -1,12 +1,11 @@
 import { useState, useCallback } from 'react'
-import type { LatLng } from 'leaflet'
-import type { BBox3857, ZoneValidation } from '../types'
+import type { LngLat, BBox3857, ZoneValidation } from '../types'
 import { lngLatToMeters } from '../utils/projection'
 import { validateBBox } from '../utils/validation'
 
 export interface DrawnZone {
   bbox: BBox3857
-  points: LatLng[]
+  points: LngLat[]
   validation: ZoneValidation
   /** центр bbox в WGS84 */
   centerLng: number
@@ -16,7 +15,7 @@ export interface DrawnZone {
 export function useDrawnZone() {
   const [zone, setZone] = useState<DrawnZone | null>(null)
 
-  const setPoints = useCallback((points: LatLng[]) => {
+  const setPoints = useCallback((points: LngLat[]) => {
     if (points.length < 3) {
       const bbox: BBox3857 = { minX: 0, minY: 0, maxX: 0, maxY: 0 }
       setZone({

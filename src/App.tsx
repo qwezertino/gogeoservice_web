@@ -10,8 +10,7 @@ import { useViewportCatalog } from './hooks/useViewportCatalog'
 import { deleteTile } from './utils/catalogApi'
 import { DEFAULT_WINDOW, DEFAULT_CLOUD } from './config'
 import type { FlyToTarget } from './components/Map/FlyToController'
-import type { BBox4326 } from './types'
-import type { LatLng } from 'leaflet'
+import type { BBox4326, LngLat } from './types'
 
 function getDefaultDate(): string {
   const d = new Date()
@@ -75,7 +74,7 @@ export function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ndviState.status === 'error' ? ndviState.message : null])
 
-  const handleZoneChange = useCallback((points: LatLng[]) => {
+  const handleZoneChange = useCallback((points: LngLat[]) => {
     setPoints(points)
     resetNdvi()
   }, [setPoints, resetNdvi])

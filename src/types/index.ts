@@ -12,6 +12,16 @@ export interface BBox4326 {
   maxLat: number
 }
 
+export interface LngLat {
+  lng: number
+  lat: number
+}
+
+export interface FlyToTarget {
+  bbox: BBox3857
+  seq: number
+}
+
 export interface NdviRequestParams {
   bbox: BBox3857
   date: string // YYYY-MM-DD

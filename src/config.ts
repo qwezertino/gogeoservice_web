@@ -18,3 +18,4 @@ export const DEFAULT_BASEMAP = envStr('VITE_DEFAULT_BASEMAP', 'esri')
 export const CATALOG_DEBOUNCE_MS   = envInt('VITE_CATALOG_DEBOUNCE_MS', 100)   // задержка после moveend
 export const CATALOG_MAX_TILES     = envInt('VITE_CATALOG_MAX_TILES', 200)     // макс. тайлов в памяти
 export const CATALOG_REFRESH_MS    = envInt('VITE_CATALOG_REFRESH_MS', 0)      // интервал обновления, 0 = выкл
+export const CATALOG_MIN_ZOOM      = envInt('VITE_CATALOG_MIN_ZOOM', 10)       // мин. зум для загрузки каталога
