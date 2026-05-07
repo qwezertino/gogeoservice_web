@@ -34,7 +34,7 @@ describe('imageOverlayCorners', () => {
   })
 
   it('SE corner is [max_lng, min_lat]', () => {
-    const [swLng, swLat] = metersToLngLat(MOSCOW_BBOX.minX, MOSCOW_BBOX.minY)
+    const [_swLng, swLat] = metersToLngLat(MOSCOW_BBOX.minX, MOSCOW_BBOX.minY)
     const [neLng] = metersToLngLat(MOSCOW_BBOX.maxX, MOSCOW_BBOX.maxY)
     const corners = imageOverlayCorners(MOSCOW_BBOX)
     expect(corners[2][0]).toBeCloseTo(neLng, 8)  // SE.lng = max_lng
