@@ -7,6 +7,7 @@ import { useDrawnZone } from './hooks/useDrawnZone'
 import { useNdviRequest } from './hooks/useNdviRequest'
 import { useSnapshots } from './hooks/useSnapshots'
 import { useViewportCatalog } from './hooks/useViewportCatalog'
+import { useRangeJob } from './hooks/useRangeJob'
 import { deleteTile } from './utils/catalogApi'
 import { DEFAULT_WINDOW, DEFAULT_CLOUD } from './config'
 import type { FlyToTarget } from './components/Map/FlyToController'
@@ -27,6 +28,12 @@ export function App() {
     add: addSnapshot, remove: removeSnapshot, removeMany: removeManySnapshots,
     select: selectSnapshot, clearAll: clearAllSnapshots, updateBlobUrl: updateSnapshotBlobUrl,
   } = useSnapshots()
+
+  const handleRangeSnapshot = useCallback((date: string, blobUrl: string, bbox: import('./types').BBox3857, minioKey: string, groupId: number) => {
+    addSnapshot({ maskedImageUrl: blobUrl, bbox, date, minioKey, groupId })
+  }, [addSnapshot])
+
+  const { state: rangeJobState, submit: submitRangeJob, cancel: cancelRangeJob } = useRangeJob(handleRangeSnapshot)
   const [date, setDate] = useState(getDefaultDate)
   const [opacity, setOpacity] = useState(0.85)
   const [searchWindow, setSearchWindow] = useState(DEFAULT_WINDOW)
@@ -87,7 +94,13 @@ export function App() {
   const handleResetZone = useCallback(() => {
     clearZone()
     resetNdvi()
-  }, [clearZone, resetNdvi])
+    cancelRangeJob()
+  }, [clearZone, resetNdvi, cancelRangeJob])
+
+  const handleRangeSubmit = useCallback((startDate: string, endDate: string, cloud: number) => {
+    if (!zone?.validation.valid) return
+    submitRangeJob(zone.bbox, startDate, endDate, cloud, zone.points)
+  }, [zone, submitRangeJob])
 
   const handleSelectSnapshot = useCallback((id: number) => {
     selectSnapshot(id)
@@ -129,6 +142,9 @@ export function App() {
         catalogProgress={catalogState.progress}
         catalogTotal={catalogState.total}
         catalogZoomOk={mapBbox !== null}
+        rangeJobState={rangeJobState}
+        onRangeSubmit={handleRangeSubmit}
+        onRangeCancel={cancelRangeJob}
       />
       <MapView
         zone={zone}

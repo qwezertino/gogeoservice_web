@@ -56,6 +56,7 @@ export interface Snapshot {
   date: string
   minioKey?: string      // присутствует только для тайлов из каталога БД
   source?: 'catalog'     // отсутствует у ручных снимков
+  groupId?: number       // снимки из одного range-job имеют одинаковый groupId
 }
 
 /** Запись из /api/catalog (координаты bbox в EPSG:3857) */

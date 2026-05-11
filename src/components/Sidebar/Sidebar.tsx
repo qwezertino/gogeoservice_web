@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import { DatePicker } from './DatePicker'
 import { ZoneInfo } from './ZoneInfo'
 import { NdviLegend } from './NdviLegend'
 import { CatalogYearSelector } from './CatalogYearSelector'
+import { RangeForm } from './RangeForm'
 import { Slider } from '../ui/Slider'
 import { Spinner } from '../ui/Spinner'
 import type { DrawnZone } from '../../hooks/useDrawnZone'
+import type { RangeJobState } from '../../hooks/useRangeJob'
 
 interface SidebarProps {
   zone: DrawnZone | null
@@ -26,6 +29,9 @@ interface SidebarProps {
   catalogProgress: number
   catalogTotal: number
   catalogZoomOk: boolean
+  rangeJobState: RangeJobState
+  onRangeSubmit: (startDate: string, endDate: string, cloud: number) => void
+  onRangeCancel: () => void
 }
 
 export function Sidebar({
@@ -34,8 +40,11 @@ export function Sidebar({
   onRequest, onResetZone,
   loading, opacity, onOpacityChange, hasActiveSnapshot,
   catalogYear, onCatalogYearChange, catalogLoading, catalogProgress, catalogTotal, catalogZoomOk,
+  rangeJobState, onRangeSubmit, onRangeCancel,
 }: SidebarProps) {
-  const canRequest = !loading && zone !== null && zone.validation.valid && date !== ''
+  const [mode, setMode] = useState<'single' | 'range'>('single')
+  const rangeRunning = rangeJobState.phase === 'submitting' || rangeJobState.phase === 'running'
+  const canRequest = !loading && !rangeRunning && zone !== null && zone.validation.valid && date !== ''
 
   return (
     <aside className="w-80 bg-gray-800 flex flex-col h-full overflow-y-auto shadow-xl">
@@ -56,42 +65,69 @@ export function Sidebar({
         {/* Zone info */}
         {zone && <ZoneInfo zone={zone} />}
 
-        {/* Date picker */}
-        <DatePicker value={date} onChange={onDateChange} />
-
-        {/* Search params */}
-        <div className="flex flex-col gap-3 bg-gray-700/30 rounded-lg px-3 py-3">
-          <Slider
-            value={window}
-            onChange={onWindowChange}
-            min={1}
-            max={30}
-            step={1}
-            label="Окно поиска"
-            format={v => `±${Math.round(v)} дн.`}
-          />
-          <Slider
-            value={cloud}
-            onChange={onCloudChange}
-            min={1}
-            max={100}
-            step={1}
-            label="Макс. облачность"
-            format={v => `${Math.round(v)}%`}
-          />
+        {/* Mode tabs */}
+        <div className="flex bg-gray-700/40 rounded-lg p-0.5">
+          {(['single', 'range'] as const).map(m => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-colors
+                ${mode === m
+                  ? 'bg-gray-600 text-white shadow'
+                  : 'text-gray-400 hover:text-gray-200'}`}
+            >
+              {m === 'single' ? 'Один снимок' : 'Диапазон дат'}
+            </button>
+          ))}
         </div>
 
-        {/* Request button */}
-        <button
-          onClick={onRequest}
-          disabled={!canRequest}
-          className={`w-full py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-colors
-            ${canRequest
-              ? 'bg-green-600 hover:bg-green-500 text-white cursor-pointer'
-              : 'bg-gray-700 text-gray-500 cursor-not-allowed'}`}
-        >
-          {loading ? <><Spinner size="sm" /><span>Загрузка…</span></> : 'Получить NDVI'}
-        </button>
+        {mode === 'single' ? (
+          <>
+            {/* Date picker */}
+            <DatePicker value={date} onChange={onDateChange} />
+
+            {/* Search params */}
+            <div className="flex flex-col gap-3 bg-gray-700/30 rounded-lg px-3 py-3">
+              <Slider
+                value={window}
+                onChange={onWindowChange}
+                min={1}
+                max={30}
+                step={1}
+                label="Окно поиска"
+                format={v => `±${Math.round(v)} дн.`}
+              />
+              <Slider
+                value={cloud}
+                onChange={onCloudChange}
+                min={1}
+                max={100}
+                step={1}
+                label="Макс. облачность"
+                format={v => `${Math.round(v)}%`}
+              />
+            </div>
+
+            {/* Request button */}
+            <button
+              onClick={onRequest}
+              disabled={!canRequest}
+              className={`w-full py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-colors
+                ${canRequest
+                  ? 'bg-green-600 hover:bg-green-500 text-white cursor-pointer'
+                  : 'bg-gray-700 text-gray-500 cursor-not-allowed'}`}
+            >
+              {loading ? <><Spinner size="sm" /><span>Загрузка…</span></> : 'Получить NDVI'}
+            </button>
+          </>
+        ) : (
+          <RangeForm
+            zone={zone}
+            jobState={rangeJobState}
+            onSubmit={onRangeSubmit}
+            onCancel={onRangeCancel}
+          />
+        )}
 
         {/* Opacity slider */}
         {hasActiveSnapshot && (

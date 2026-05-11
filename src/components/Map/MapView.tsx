@@ -390,12 +390,18 @@ export function MapView({
       ]
 
       if (existingUrl === undefined) {
-        // New snapshot
+        // New snapshot — initially hidden if same zone as active but not active itself
+        const activeSnap = snapshots.find(s => s.id === activeSnapshotId)
+        const activeBboxKey = activeSnap ? `${activeSnap.bbox.minX.toFixed(0)}_${activeSnap.bbox.minY.toFixed(0)}` : null
+        const snapBboxKey = `${snap.bbox.minX.toFixed(0)}_${snap.bbox.minY.toFixed(0)}`
+        const sameZone = snapBboxKey === activeBboxKey
+        const initialOpacity = snap.id === activeSnapshotId ? ndviOpacity : sameZone ? 0 : ndviOpacity * 0.45
+
         map.addSource(srcId, { type: 'image', url: snap.maskedImageUrl, coordinates: coords })
         map.addLayer({
           id: lyrId, type: 'raster', source: srcId,
           paint: {
-            'raster-opacity': snap.id === activeSnapshotId ? ndviOpacity : ndviOpacity * 0.45,
+            'raster-opacity': initialOpacity,
             'raster-fade-duration': 0,
           },
         }, LYR_ZONE_FILL) // always below zone polygon
@@ -413,12 +419,30 @@ export function MapView({
   useEffect(() => {
     const map = mapRef.current
     if (!map?.isStyleLoaded()) return
+
+    // Find the bbox of the active snapshot (if any)
+    const activeSnap = snapshots.find(s => s.id === activeSnapshotId)
+    const activeBboxKey = activeSnap
+      ? `${activeSnap.bbox.minX.toFixed(0)}_${activeSnap.bbox.minY.toFixed(0)}`
+      : null
+
     for (const snap of snapshots) {
       const lyrId = `ndvi-lyr-${snap.id}`
-      if (map.getLayer(lyrId)) {
-        map.setPaintProperty(lyrId, 'raster-opacity',
-          snap.id === activeSnapshotId ? ndviOpacity : ndviOpacity * 0.45)
+      if (!map.getLayer(lyrId)) continue
+
+      const snapBboxKey = `${snap.bbox.minX.toFixed(0)}_${snap.bbox.minY.toFixed(0)}`
+      const sameZone = snapBboxKey === activeBboxKey
+
+      let opacity: number
+      if (snap.id === activeSnapshotId) {
+        opacity = ndviOpacity           // active: full
+      } else if (sameZone) {
+        opacity = 0                     // same zone, not active: hidden
+      } else {
+        opacity = ndviOpacity * 0.45    // different zone: dimmed
       }
+
+      map.setPaintProperty(lyrId, 'raster-opacity', opacity)
     }
   }, [ndviOpacity, activeSnapshotId, snapshots])
 
