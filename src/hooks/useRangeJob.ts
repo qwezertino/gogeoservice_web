@@ -23,6 +23,7 @@ export function useRangeJob(
 ) {
   const [state, setState] = useState<RangeJobState>({ phase: 'idle' })
   const cancelledRef = useRef(false)
+  const fetchedKeysRef = useRef(new Set<string>())
 
   const submit = useCallback(async (
     bbox: BBox3857,
@@ -32,6 +33,7 @@ export function useRangeJob(
     polygon?: LngLat[],
   ) => {
     cancelledRef.current = false
+    fetchedKeysRef.current = new Set()
     const groupId = Date.now()
     setState({ phase: 'submitting' })
 
@@ -46,14 +48,14 @@ export function useRangeJob(
       return
     }
 
-    setState({ phase: 'running', jobId, done: 0, total: 0 })
     console.log('[rangeJob] started polling', jobId)
+    setState({ phase: 'running', jobId, done: 0, total: 0 })
 
-    // Poll status only — no incremental result fetching
     while (!cancelledRef.current) {
       await sleep(POLL_MS)
       if (cancelledRef.current) break
 
+      // Poll status
       let status: RangeJobStatus
       try {
         status = await pollRangeJob(jobId)
@@ -71,29 +73,28 @@ export function useRangeJob(
         return
       }
 
+      // Fetch any newly available results (incremental)
+      try {
+        const results = await getRangeResults(jobId)
+        if (cancelledRef.current) break
+        const newResults = results.filter(r => !fetchedKeysRef.current.has(r.minio_key))
+        if (newResults.length > 0) {
+          // One batch request per poll tick — only new keys
+          const images = await fetchBatchImages(newResults)
+          if (cancelledRef.current) break
+          for (const img of images) {
+            fetchedKeysRef.current.add(img.minio_key)
+            onSnapshot(img.date, img.blobUrl, bbox, img.minio_key, groupId)
+          }
+        }
+      } catch {
+        // Results endpoint not ready yet — keep polling
+      }
+
       if (status.status === 'done') {
-        console.log('[rangeJob] status=done, fetching results')
+        setState({ phase: 'done', count: fetchedKeysRef.current.size })
         break
       }
-    }
-
-    if (cancelledRef.current) return
-
-    // One batch request with ALL keys at once
-    try {
-      const results = await getRangeResults(jobId)
-      console.log('[rangeJob] results count:', results.length, results.map(r => r.date))
-      if (cancelledRef.current) return
-      const images = await fetchBatchImages(results)
-      console.log('[rangeJob] batch images received:', images.length)
-      if (cancelledRef.current) return
-      for (const img of images) {
-        onSnapshot(img.date, img.blobUrl, bbox, img.minio_key, groupId)
-      }
-      setState({ phase: 'done', count: images.length })
-    } catch (e) {
-      console.error('[rangeJob] error loading results:', e)
-      setState({ phase: 'error', message: 'Не удалось загрузить результаты' })
     }
   }, [onSnapshot])
 
@@ -105,7 +106,9 @@ export function useRangeJob(
   const reset = useCallback(() => {
     cancelledRef.current = true
     setState({ phase: 'idle' })
+    fetchedKeysRef.current = new Set()
   }, [])
 
   return { state, submit, cancel, reset }
 }
+
