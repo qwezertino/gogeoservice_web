@@ -4,6 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { DEFAULT_BASEMAP, CATALOG_MIN_ZOOM } from '../../config'
 import { metersToLngLat, lngLatToMeters } from '../../utils/projection'
 import { validationErrorText } from '../../utils/validation'
+import { fetchNdviRaw, calcTileSize, sampleNdviAt, ndviToLabel } from '../../utils/ndviRaw'
 import { Spinner } from '../ui/Spinner'
 import type { BBox4326, Snapshot, LngLat, FlyToTarget } from '../../types'
 import type { DrawnZone } from '../../hooks/useDrawnZone'
@@ -20,6 +21,12 @@ const LYR_DRAW_VERTS = 'lyr-draw-verts'
 const SRC_SNAP  = 'src-snap'
 const LYR_SNAP  = 'lyr-snap'
 const SNAP_RADIUS_PX = 20
+
+interface NdviTooltip {
+  screenX: number
+  screenY: number
+  text: string
+}
 
 // ---- Pure helpers ----
 
@@ -82,6 +89,12 @@ export function MapView({
   const [basemap, setBasemap] = useState(DEFAULT_BASEMAP)
   const basemapRef = useRef(DEFAULT_BASEMAP)
   const [isDrawing, setIsDrawing] = useState(false)
+  const [ndviTooltip, setNdviTooltip] = useState<NdviTooltip | null>(null)
+
+  // Raw NDVI float32 cache: minioKey → Float32Array | null (null = 404/unavailable)
+  const rawCacheRef = useRef<Map<string, Float32Array | null>>(new Map())
+  // Stable ref to setter so it can be called from inside the map init closure
+  const setNdviTooltipRef = useRef(setNdviTooltip)
 
   // Stable refs — updated every render, safe to read inside event handlers
   const drawVertsRef = useRef<[number, number][]>([])
@@ -228,9 +241,10 @@ export function MapView({
       map.on('moveend', emitBounds)
     })
 
-    // Mouse move — rubber-band line + cursor hint over snapshots
+    // Mouse move — rubber-band line + cursor hint over snapshots + NDVI tooltip
     map.on('mousemove', (e) => {
       if (isDrawingRef.current) {
+        setNdviTooltipRef.current(null)
         if (drawVertsRef.current.length === 0) return
         const raw: [number, number] = [e.lngLat.lng, e.lngLat.lat]
         const snap = findSnapTarget(map, raw, drawVertsRef.current)
@@ -246,6 +260,26 @@ export function MapView({
         return
       }
       snapTargetRef.current = null
+
+      // NDVI hover: sample value from cached raw data for active snapshot
+      const activeSnap = snapshotsRef.current.find(s => s.id === activeIdRef.current)
+      if (activeSnap?.minioKey) {
+        const rawData = rawCacheRef.current.get(activeSnap.minioKey)
+        if (rawData) {
+          const { w, h } = calcTileSize(activeSnap.bbox)
+          const val = sampleNdviAt(rawData, activeSnap.bbox, w, h, e.lngLat.lng, e.lngLat.lat)
+          if (val !== null) {
+            setNdviTooltipRef.current({ screenX: e.point.x, screenY: e.point.y, text: ndviToLabel(val) })
+          } else {
+            setNdviTooltipRef.current(null)
+          }
+        } else {
+          setNdviTooltipRef.current(null)
+        }
+      } else {
+        setNdviTooltipRef.current(null)
+      }
+
       // Cursor pointer over inactive NDVI overlays
       const [x, y] = lngLatToMeters(e.lngLat.lng, e.lngLat.lat)
       const over = snapshotsRef.current.some(s =>
@@ -253,6 +287,10 @@ export function MapView({
         x >= s.bbox.minX && x <= s.bbox.maxX && y >= s.bbox.minY && y <= s.bbox.maxY,
       )
       map.getCanvas().style.cursor = over ? 'pointer' : ''
+    })
+
+    map.getCanvas().addEventListener('mouseleave', () => {
+      setNdviTooltipRef.current(null)
     })
 
     // Click — add vertex or select overlay
@@ -446,6 +484,21 @@ export function MapView({
     }
   }, [ndviOpacity, activeSnapshotId, snapshots])
 
+  // ---- NDVI raw cache: load when active snapshot changes ----
+
+  useEffect(() => {
+    if (!activeSnapshotId) { setNdviTooltip(null); return }
+    const snap = snapshots.find(s => s.id === activeSnapshotId)
+    if (!snap?.minioKey) return
+    const key = snap.minioKey
+    if (rawCacheRef.current.has(key)) return // already cached (success or 404)
+    // Mark as pending so we don't re-fetch while in flight
+    rawCacheRef.current.set(key, null)
+    fetchNdviRaw(key).then(data => {
+      rawCacheRef.current.set(key, data) // data=null means 404/error → silently skip tooltip
+    })
+  }, [activeSnapshotId, snapshots])
+
   // ---- FlyTo ----
 
   const prevFlySeq = useRef(-1)
@@ -508,6 +561,16 @@ export function MapView({
           <option value="osm">OpenStreetMap</option>
         </select>
       </div>
+
+      {/* NDVI hover tooltip */}
+      {ndviTooltip && (
+        <div
+          className="absolute z-20 bg-black/75 text-white text-xs px-2 py-1 rounded pointer-events-none whitespace-nowrap"
+          style={{ left: ndviTooltip.screenX + 14, top: ndviTooltip.screenY - 10 }}
+        >
+          {ndviTooltip.text}
+        </div>
+      )}
 
       {/* Drawing hint */}
       {isDrawing && (
